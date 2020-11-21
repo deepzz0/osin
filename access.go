@@ -517,6 +517,24 @@ func (s *Server) FinishAccessRequest(w *Response, r *http.Request, ar *AccessReq
 		if ret.Scope != "" {
 			w.Output["scope"] = ret.Scope
 		}
+		// recognize openid connect
+		for _, scope := range strings.Fields(ret.Scope) {
+			if scope == "openid" {
+				key, err := s.Storage.GetPrivateKey(ar.Client.GetId())
+				if err != nil {
+					s.setErrorAndLog(w, E_SERVER_ERROR, err, "finish_access_request=%s", "error get private key")
+					return
+				}
+				// UserData must be id_token data
+				idToken, err := signPayload(key, ar.UserData)
+				if err != nil {
+					s.setErrorAndLog(w, E_SERVER_ERROR, err, "finish_access_request=%s", "error sign payload")
+					return
+				}
+				w.Output["id_token"] = idToken
+				break
+			}
+		}
 	} else {
 		s.setErrorAndLog(w, E_ACCESS_DENIED, nil, "finish_access_request=%s", "authorization failed")
 	}
