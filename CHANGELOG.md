@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.1](https://github.com/deepzz0/osin/compare/v1.1.0...v1.1.1) (2020-11-21)
+
+
+### Bug Fixes
+
+* **access:** access key not encode id_token ([8cc9a13](https://github.com/deepzz0/osin/commit/8cc9a13e8a711c5e53e067fb78845fe6cce979a9))
+
 ## [1.1.0](https://github.com/deepzz0/osin/compare/v1.0.1...v1.1.0) (2020-11-21)
 
 
