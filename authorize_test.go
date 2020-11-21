@@ -1,7 +1,9 @@
 package osin
 
 import (
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -12,40 +14,65 @@ func TestAuthorizeCode(t *testing.T) {
 	sconfig.AllowedAuthorizeTypes = AllowedAuthorizeType{CODE, ID_TOKEN, TOKEN}
 	server := NewServer(sconfig, NewTestingStorage())
 	server.AuthorizeTokenGen = &TestingAuthorizeTokenGen{}
-	resp := server.NewResponse()
 
 	req, err := http.NewRequest("GET", "http://localhost:14000/appauth", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	req.Form = make(url.Values)
-	req.Form.Set("response_type", string(TOKEN)+" "+string(CODE)+" "+string(ID_TOKEN))
+
+	var responseTypes = []string{
+		"code",
+		"code id_token",
+		"code token",
+		"code id_token token",
+		"token",
+		"id_token",
+		"id_token token",
+	}
+	var scopes = []string{
+		"email",
+		"openid",
+		"email",
+		"openid",
+		"email",
+		"openid",
+		"openid",
+	}
 	req.Form.Set("client_id", "1234")
 	req.Form.Set("state", "a")
-	req.Form.Set("scope", "openid")
 	req.Form.Set("nonce", "xx")
+	for i, v := range responseTypes {
+		resp := server.NewResponse()
 
-	if ar := server.HandleAuthorizeRequest(resp, req); ar != nil {
-		ar.Authorized = true
-		server.FinishAuthorizeRequest(resp, req, ar)
-	}
+		req.Form.Set("response_type", v)
+		req.Form.Set("scope", scopes[i])
 
-	// fmt.Printf("%+v\n", resp)
+		if ar := server.HandleAuthorizeRequest(resp, req); ar != nil {
+			ar.Authorized = true
+			server.FinishAuthorizeRequest(resp, req, ar)
+		}
 
-	if resp.IsError && resp.InternalError != nil {
-		t.Fatalf("Error in response: %s", resp.InternalError)
-	}
+		// fmt.Printf("%+v\n", resp)
 
-	if resp.IsError {
-		t.Fatalf("Should not be an error")
-	}
+		if resp.IsError && resp.InternalError != nil {
+			t.Fatalf("Error in response: %s", resp.InternalError)
+		}
 
-	if resp.Type != REDIRECT {
-		t.Fatalf("Response should be a redirect")
-	}
+		if resp.IsError {
+			t.Fatalf("Should not be an error: %s", resp.Output["error_description"])
+		}
 
-	if d := resp.Output["code"]; d != "1" {
-		t.Fatalf("Unexpected authorization code: %s", d)
+		if resp.Type != REDIRECT {
+			t.Fatalf("Response should be a redirect")
+		}
+
+		// if d := resp.Output["code"]; d != "1" {
+		// 	t.Fatalf("Unexpected authorization code: %s", d)
+		// }
+		w := httptest.NewRecorder()
+		OutputJSON(resp, w, nil)
+		fmt.Printf("[%s] %s\n\n", v, w.HeaderMap.Get("Location"))
 	}
 }
 
